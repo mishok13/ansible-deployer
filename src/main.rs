@@ -13,7 +13,7 @@ use tower_http::{classify::ServerErrorsFailureClass, trace::TraceLayer};
 use tracing::Span;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct Release {
     // assets: Vec<Asset>,
     // assets_url: String,
@@ -34,12 +34,12 @@ struct Release {
     url: String,
     zipball_url: Option<String>,
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct Repository {}
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct Sender {}
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct WebhookPayload {
     action: String,
     release: Release,
@@ -61,6 +61,9 @@ async fn main() {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
+
+    // Needs to fire off a request to populate allowlisted IP addresses. Also the list probably needs to be
+    // updated on occassion (how often? hourly? daily?)
 
     let app = Router::new()
         .route("/", get(handler))
@@ -132,6 +135,44 @@ async fn webhook(
     headers: HeaderMap,
     Json(payload): Json<WebhookPayload>,
 ) -> StatusCode {
-    tracing::debug!("Got the payload {:?}", user_agent);
+    tracing::debug!("Got the UA {:?}", user_agent);
+    tracing::debug!("Got the headers {:?}", headers);
+    tracing::debug!("Got the payload {:?}", payload);
     StatusCode::ACCEPTED
+}
+
+fn validate_signature(secret: &[u8], payload: &[u8], signature: &[u8]) -> bool {
+    let key = ring::hmac::Key::new(ring::hmac::HMAC_SHA256, secret);
+    println!("{:x?}", ring::hmac::sign(&key, payload).as_ref());
+    ring::hmac::verify(&key, payload, signature)
+        .map_err(|e| println!("WTFFFFFF {:?}", e))
+        .is_ok()
+}
+
+fn hex_to_u8(s: &str) -> Vec<u8> {
+    (0..s.len())
+        .step_by(2)
+        .map(|index| {
+            s.get(index..index + 2)
+                .map(|pair| u8::from_str_radix(pair, 16).expect("Invalid hex values"))
+                .expect("Invalid hex string length")
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_signature() {
+        // Test values as provided by GitHub here
+        // https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries#validating-webhook-deliveries
+        let secret = b"It's a Secret to Everybody";
+        let payload = b"Hello, World!";
+        let signature =
+            hex_to_u8("757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17");
+
+        assert!(validate_signature(secret, payload, &signature));
+    }
 }
