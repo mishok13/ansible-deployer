@@ -4,9 +4,16 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = "1.0.100"
 axum = { version = "0.8.1", features = ["tracing", "json"] }
+clap = { version = "4.5.51", features = ["derive", "env"] }
+flate2 = "1.1.5"
+ipnet = { version = "2.11.0", features = ["serde"] }
+reqwest = {version = "0.12.24", features = ["http2", "json", "rustls-tls"], default-features = false}
 ring = "0.17.14"
 serde = {version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.145"
+tar = "0.4.44"
 tokio = { version = "1.44.1", features = ["rt-multi-thread", "tracing"] }
 tower-http = { version = "0.6.2", features = ["trace"] }
 tracing = "0.1.41"

@@ -1,0 +1,30 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions: {}
+
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        persist-credentials: false
+    - name: Build
+      run: cargo build --verbose
+    - name: Tests
+      run: cargo test --verbose
+    - name: Clippy
+      run: cargo clippy --all-targets --all-features
